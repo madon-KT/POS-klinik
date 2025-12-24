@@ -1,41 +1,43 @@
-FROM php:8.2-apache
+FROM php:8.1-fpm-alpine
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    libzip-dev \
-    zip \
+RUN apk add --no-cache \
+    nginx \
+    supervisor \
     curl \
-    nodejs \
-    npm \
- && docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
+    libzip-dev \
+    oniguruma-dev \
+    icu-dev \
+    zip \
+    unzip
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Set working directory
-WORKDIR /var/www/html
-
-# Copy source code
-COPY . .
+# PHP extensions
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    mbstring \
+    zip \
+    intl
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy project files
+COPY . .
+
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Install Node dependencies & build assets
-RUN npm install && npm run build
-
-# Set permissions
+# Laravel permissions
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-# Expose port
+# Nginx config
+COPY ./docker/nginx.conf /etc/nginx/nginx.conf
+COPY ./docker/supervisord.conf /etc/supervisord.conf
+
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
