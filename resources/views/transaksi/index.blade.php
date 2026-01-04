@@ -97,7 +97,7 @@
                                     <div>{{ $detail->obat->nama_obat }} ({{ $detail->jumlah }} x Rp. {{ number_format($detail->obat->harga, 0, ',', '.') }})</div>
                                 @endforeach
                             </td>
-                            <td class="border px-4 py-2 text-center">{{ $transaksi->details->sum('jumlah') }} x Rp {{ number_format($detail->subtotal / $detail->jumlah, 0, ',', '.') }}</td>
+                            <td class="border px-4 py-2 text-center">{{ $transaksi->details->sum('jumlah') }} </td>
                             <td class="border px-4 py-2 text-center">Rp {{ number_format($transaksi->total_harga, 0, ',', '.') }}</td>
                             <td class="border px-4 py-2 text-center">
                                 <a href="{{ route('transaksi.nota', $transaksi->id) }}" class="bg-green-500 text-white px-2 py-1 rounded">Nota</a>
