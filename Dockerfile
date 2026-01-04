@@ -1,64 +1,43 @@
-# =================================================
-# Stage 1: Frontend Build (Vite - Node 20)
-# =================================================
-FROM node:20-alpine AS frontend
-
-WORKDIR /app
-
-# Copy dependency files
-COPY package.json package-lock.json ./
-RUN npm install
-
-# Copy frontend source & config
-COPY resources ./resources
-COPY vite.config.js .
-COPY postcss.config.js .
-COPY tailwind.config.js .
-
-# Build frontend assets
-RUN npm run build
-
-
-# =================================================
-# Stage 2: Backend (Laravel)
-# =================================================
-FROM php:8.2-fpm
-
-WORKDIR /var/www
+FROM php:8.1-fpm-alpine
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
+RUN apk add --no-cache \
+    nginx \
+    supervisor \
     curl \
+    libzip-dev \
+    oniguruma-dev \
+    icu-dev \
     zip \
-    unzip \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev
+    unzip
 
-# Install PHP extensions
+# PHP extensions
 RUN docker-php-ext-install \
+    pdo \
     pdo_mysql \
     mbstring \
-    bcmath \
-    gd
+    zip \
+    intl
 
 # Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy Laravel application
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy project files
 COPY . .
-
-# Copy compiled Vite assets
-COPY --from=frontend /app/public/build ./public/build
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Set permissions
-RUN chmod -R 775 storage bootstrap/cache
+# Laravel permissions
+RUN chown -R www-data:www-data storage bootstrap/cache
 
-EXPOSE 8000
+# Nginx config
+COPY ./docker/nginx.conf /etc/nginx/nginx.conf
+COPY ./docker/supervisord.conf /etc/supervisord.conf
 
-# Run Laravel
-CMD php artisan serve --host=0.0.0.0 --port=8000
+EXPOSE 80
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
